@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+    networks:
+      webhook_network:
+        ipv4_address: 172.20.0.10
+
+  db:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: events_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - /var/lib/mysql
+    networks:
+      webhook_network:
+        ipv4_address: 172.20.0.20
+
+  request-handler:
+    build:
+      context: ./requestHandler
+      dockerfile: Dockerfile
+    depends_on:
+      - rabbitmq
+    ports:
+      - "3000:3000"
+    networks:
+      webhook_network:
+        ipv4_address: 172.20.0.30
+
+  consumer:
+    build:
+      context: ./consumer
+      dockerfile: Dockerfile
+    volumes:
+      - ./app
+    depends_on:
+      - rabbitmq
+      - db
+    networks:
+      webhook_network:
+        ipv4_address: 172.20.0.40
+
+networks:
+  webhook_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  db-data: 
